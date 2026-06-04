@@ -1,0 +1,11 @@
+# Ignorowane pliki i foldery
+build/
+out/
+.vs/
+.cache/
+CMakeCache.txt
+CMakeFiles/
+*.exe
+*.dll
+*.pdb
+*.obj
