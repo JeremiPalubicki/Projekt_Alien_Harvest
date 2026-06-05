@@ -20,4 +20,5 @@ public:
     bool isDestroyed() const { return destroyed; }
     void destroy() { destroyed = true; }
     sf::Vector2f getPosition() const { return position; }
+    float getRotation() const { return rotation; }
 };

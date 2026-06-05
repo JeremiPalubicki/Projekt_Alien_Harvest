@@ -10,6 +10,6 @@ find_package(SFML 2 COMPONENTS graphics window system REQUIRED)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 file(GLOB_RECURSE HEADERS "include/*.h")
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} "include/Bullet.h" "src/Bullet.cpp")
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-window sfml-system)
