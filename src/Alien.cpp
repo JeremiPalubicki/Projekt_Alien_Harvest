@@ -5,22 +5,32 @@ Alien::Alien(float x, float y, Player* playerTarget, sf::Texture& tex, float mov
     : GameObject(x, y), speed(moveSpeed), target(playerTarget), hp(maxHp) {
 
     sprite.setTexture(tex);
-    sprite.setOrigin(15.0f, 15.0f); // Polowa rozmiaru 30x30
+
+    // to samo co u gracza, ogarniamy srodek do obrotu
+    sf::FloatRect bounds = sprite.getLocalBounds();
+    sprite.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
+
+    // kosmita musi byc minimalnie mniejszy od farmera zeby dalo sie uciekac
+    float targetSize = 50.0f;
+    sprite.setScale(targetSize / bounds.width, targetSize / bounds.height);
+
     sprite.setPosition(position);
 }
 
 void Alien::update(float deltaTime) {
+    // jak nie ma celu albo gracz nie zyje, to ufoludki stoja w miejscu
     if (!target || target->isDestroyed() || isDestroyed()) return;
 
-    // Obliczanie wektora kierunkowego do gracza
+    // wektor kierunkowy na gracza
     sf::Vector2f targetPos = target->getPosition();
     float dx = targetPos.x - position.x;
     float dy = targetPos.y - position.y;
 
+    // pitagoras do dystansu
     float distance = std::sqrt(dx * dx + dy * dy);
 
     if (distance > 0) {
-        // Normalizacja i ruch
+        // normalizacja wektora zeby nie zapierdzielal szybciej chodzac na ukos
         float dirX = dx / distance;
         float dirY = dy / distance;
 
@@ -42,6 +52,6 @@ sf::FloatRect Alien::getBounds() const {
 void Alien::takeDamage(int amount) {
     hp -= amount;
     if (hp <= 0) {
-        destroy();
+        destroy(); // dajemy flage zeby wywalilo go z wektora w main.cpp
     }
 }
