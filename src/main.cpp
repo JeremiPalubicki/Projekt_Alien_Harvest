@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "Player.h"
 #include "Bullet.h"
-
+#include "Alien.h"
 int main() {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Alien Farm Defense");
     sf::Clock clock;
@@ -15,7 +15,8 @@ int main() {
     auto playerPtr = std::make_unique<Player>(400.0f, 300.0f);
     Player* player = playerPtr.get();
     entities.push_back(std::move(playerPtr));
-
+	// testowy obcy, dajemy mu wskaznik na gracza zeby mial za kim latac
+    entities.push_back(std::make_unique<Alien>(50.0f, 50.0f, player));
     while (window.isOpen()) {
         float deltaTime = clock.restart().asSeconds();
 
