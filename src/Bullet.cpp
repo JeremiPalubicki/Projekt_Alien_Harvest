@@ -1,27 +1,35 @@
 #include "Bullet.h"
-#include <cmath>
+#include <cmath> // Do funkcji sin() i cos()
 
-Bullet::Bullet(float x, float y, float angle) : GameObject(x, y), speed(500.0f) {
-    rotation = angle;
+Bullet::Bullet(float x, float y, float angle) : GameObject(x, y) {
+    float speed = 700.0f; // Szybkość lotu lasera
 
-    shape.setSize(sf::Vector2f(10.0f, 4.0f));
-    shape.setOrigin(5.0f, 2.0f);
-    shape.setPosition(position);
-    shape.setRotation(rotation);
+    // Zamiana stopni na radiany (C++ wymaga radianów w funkcjach trygonometrycznych)
+    float radians = angle * 3.14159265f / 180.0f;
+
+    // Obliczanie kierunku lotu pocisku
+    velocity.x = std::cos(radians) * speed;
+    velocity.y = std::sin(radians) * speed;
+
+    // Tworzenie "świecącego" pocisku
+    shape.setSize(sf::Vector2f(16.0f, 4.0f));
     shape.setFillColor(sf::Color::Yellow);
+    shape.setOrigin(8.0f, 2.0f); // Środek pocisku
 
-    // Przeliczenie kąta na wektor kierunku (radiany)
-    float rad = rotation * 3.14159265f / 180.0f;
-    velocity.x = std::cos(rad);
-    velocity.y = std::sin(rad);
+    shape.setPosition(position);
+    shape.setRotation(angle); // Obracamy grafikę pocisku zgodnie z kierunkiem lotu
 }
 
 void Bullet::update(float deltaTime) {
-    position += velocity * speed * deltaTime;
+    if (isDestroyed()) return;
+
+    // Aktualizacja pozycji na podstawie wektora
+    position.x += velocity.x * deltaTime;
+    position.y += velocity.y * deltaTime;
     shape.setPosition(position);
 
-    // Usuwanie pocisku poza ekranem (okno 800x600)
-    if (position.x < 0 || position.x > 800 || position.y < 0 || position.y > 600) {
+    // Automatyczne niszczenie pocisku, gdy wyleci poza ekran (oszczędza pamięć)
+    if (position.x < -100 || position.x > 900 || position.y < -100 || position.y > 700) {
         destroy();
     }
 }

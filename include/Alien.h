@@ -1,16 +1,18 @@
 #pragma once
 #include "GameObject.h"
 #include "Player.h"
+#include <SFML/Graphics.hpp>
 
 class Alien : public GameObject {
 private:
-    sf::RectangleShape shape;
+    sf::Sprite sprite;
     float speed;
     Player* target;
-    int hp; // Punkty zycia ufoludka
+    int hp;
 
 public:
-    Alien(float x, float y, Player* playerTarget);
+    // Konstruktor przyjmuje teraz dodatkowo predkosc i punkty zycia
+    Alien(float x, float y, Player* playerTarget, sf::Texture& tex, float moveSpeed = 100.0f, int maxHp = 2);
 
     void update(float deltaTime) override;
     void draw(sf::RenderWindow& window) override;

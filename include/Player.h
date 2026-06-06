@@ -4,9 +4,11 @@
 
 class Player : public GameObject {
 private:
-    sf::RectangleShape shape;
+    sf::Texture texture;
+    sf::Sprite sprite;
     float speed;
-    int health; // Punkty zycia farmera
+    int health;
+    int maxHealth;
 
 public:
     Player(float x, float y);
@@ -16,7 +18,10 @@ public:
     sf::FloatRect getBounds() const override;
     void rotateTowardsMouse(const sf::RenderWindow& window);
 
-    // Metody do HP
     void takeDamage(int amount);
     int getHealth() const { return health; }
-}; // <--- To tej klamry ze srednikiem prawdopodobnie gdzies zabraklo!
+    int getMaxHealth() const { return maxHealth; }
+
+    // --- TA LINIJKA NAPRAWIA STRZELANIE ---
+    float getRotation() const { return sprite.getRotation(); }
+};
