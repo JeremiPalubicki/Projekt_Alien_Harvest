@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(AlienHarvest)
 
 set(CMAKE_CXX_STANDARD 17)
+set(SFML_DIR "C:\Users\oliwi\Desktop\SFML-2.6.2-windows-vc17-64-bit")
 
 # szukamy sfml w wersji 2.x
 find_package(SFML 2 COMPONENTS graphics window system REQUIRED)
