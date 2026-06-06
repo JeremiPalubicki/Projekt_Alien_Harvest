@@ -1,7 +1,8 @@
 #include "Alien.h"
 #include <cmath>
 
-Alien::Alien(float x, float y, Player* playerTarget) : GameObject(x, y), speed(100.0f), target(playerTarget) {
+//  inicjalizacje hp(2) na liscie inicjalizacyjnej
+Alien::Alien(float x, float y, Player* playerTarget) : GameObject(x, y), speed(100.0f), target(playerTarget), hp(2) {
     // czerwony kwadrat jako tymczasowy kosmita
     shape.setSize(sf::Vector2f(30.0f, 30.0f));
     shape.setOrigin(15.0f, 15.0f);
@@ -40,4 +41,12 @@ void Alien::draw(sf::RenderWindow& window) {
 
 sf::FloatRect Alien::getBounds() const {
     return shape.getGlobalBounds();
+}
+
+//  Implementacja funkcji otrzymywania obrazen przez kosmite
+void Alien::takeDamage(int amount) {
+    hp -= amount;
+    if (hp <= 0) {
+        destroy(); // Obcy ginie
+    }
 }

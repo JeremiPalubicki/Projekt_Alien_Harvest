@@ -6,7 +6,7 @@ class Player : public GameObject {
 private:
     sf::RectangleShape shape; // na razie zwykly prostokat zeby bylo cokolwiek widac
     float speed;              // predkosc w pikselach na sekunde
-
+    int health;
 public:
     Player(float x, float y);
     
@@ -16,4 +16,7 @@ public:
     
     // funkcja do obracania postacia w strone celownika
     void rotateTowardsMouse(const sf::RenderWindow& window);
+
+    void takeDamage(int amount);
+    int getHealth() const { return health;
 };

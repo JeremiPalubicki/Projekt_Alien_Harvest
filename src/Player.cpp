@@ -1,7 +1,8 @@
 #include "Player.h"
 #include <cmath>
 
-Player::Player(float x, float y) : GameObject(x, y), speed(300.0f) {
+//  inicjalizacje health(100) na liscie inicjalizacyjnej
+Player::Player(float x, float y) : GameObject(x, y), speed(300.0f), health(100) {
     // tymczasowy wyglad gracza
     shape.setSize(sf::Vector2f(40.0f, 40.0f));
     shape.setOrigin(20.0f, 20.0f); // srodek rotacji
@@ -47,4 +48,12 @@ void Player::draw(sf::RenderWindow& window) {
 
 sf::FloatRect Player::getBounds() const {
     return shape.getGlobalBounds();
+}
+
+// Implementacja funkcji otrzymywania obrazen przez gracza
+void Player::takeDamage(int amount) {
+    health -= amount;
+    if (health <= 0) {
+        destroy(); // Jeśli HP spadnie do 0, farmer odpala flagę zniszczenia z GameObject
+    }
 }
