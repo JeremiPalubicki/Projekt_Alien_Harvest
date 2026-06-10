@@ -6,7 +6,8 @@
 #include <ctime>
 #include <string>
 #include <iostream>
-
+#include "Runner.h"
+#include "Boss.h"
 #include "Player.h"
 #include "Bullet.h"
 #include "Alien.h"
@@ -117,18 +118,36 @@ int main() {
             if (!player->isDestroyed()) {
                 player->rotateTowardsMouse(window);
             }
-
-            for (auto& entity : entities) {
-                entity->update(deltaTime);
+            size_t currentSize = entities.size();
+            for (size_t i = 0; i < currentSize; ++i) {
+                entities[i]->update(deltaTime);
             }
 
             // Spawner wrogów
             if (alienSpawnClock.getElapsedTime().asSeconds() > spawnCooldown) {
                 float randomY = static_cast<float>(std::rand() % 500 + 50);
                 if (!player->isDestroyed()) {
-                    entities.push_back(std::make_unique<Alien>(
-                        800.0f, randomY, player, alienTexture, currentAlienSpeed, currentAlienHp
-                    ));
+
+                    int chance = std::rand() % 100;
+
+                    if (currentLevel >= 5 && chance < 10) {
+                        // Od 5 poziomu masz 10% szans na spawn Bossa
+                        entities.push_back(std::make_unique<Boss>(
+                            800.0f, randomY, player, alienTexture, &entities
+                        ));
+                    }
+                    else if (currentLevel >= 2 && chance < 35) {
+                        // Od 2 poziomu masz 35% szans na szybkiego Runnera
+                        entities.push_back(std::make_unique<Runner>(
+                            800.0f, randomY, player, alienTexture
+                        ));
+                    }
+                    else {
+                        // Standardowy mięśniak
+                        entities.push_back(std::make_unique<Alien>(
+                            800.0f, randomY, player, alienTexture, currentAlienSpeed, currentAlienHp
+                        ));
+                    }
                 }
                 alienSpawnClock.restart();
             }

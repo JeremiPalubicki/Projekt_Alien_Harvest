@@ -17,6 +17,10 @@ add_executable(${PROJECT_NAME}
     "include/Player.h"
     "include/Bullet.h"
     "include/Alien.h"
+    "include/Runner.h" 
+    "src/Runner.cpp" 
+    "include/Boss.h" 
+    "src/Boss.cpp"
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

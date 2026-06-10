@@ -9,7 +9,7 @@ private:
     float speed;
     int health;
     int maxHealth;
-
+    float aimAngle;
 public:
     Player(float x, float y);
 
@@ -22,6 +22,6 @@ public:
     int getHealth() const { return health; }
     int getMaxHealth() const { return maxHealth; }
 
-    // --- TA LINIJKA NAPRAWIA STRZELANIE ---
-    float getRotation() const { return sprite.getRotation(); }
+ 
+    float getRotation() const { return aimAngle; }
 };
