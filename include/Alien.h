@@ -4,7 +4,7 @@
 #include <SFML/Graphics.hpp>
 
 class Alien : public GameObject {
-private:
+protected:
     sf::Sprite sprite;
     float speed;
     Player* target;

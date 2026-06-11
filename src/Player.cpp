@@ -47,13 +47,28 @@ sf::FloatRect Player::getBounds() const {
 void Player::rotateTowardsMouse(const sf::RenderWindow& window) {
     if (isDestroyed()) return;
 
-    // trygonometria do obracania postaci za kursorem
     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+    sf::FloatRect bounds = sprite.getLocalBounds();
+
+    float targetSize = 60.0f;
+    float scaleX = targetSize / bounds.width;
+    float scaleY = targetSize / bounds.height;
+
+    // --- OBLICZAMY PRAWDZIWY KĄT DO STRZELANIA ---
     float dx = mousePos.x - position.x;
     float dy = mousePos.y - position.y;
-    float angle = std::atan2(dy, dx) * 180.0f / 3.14159265f;
+    aimAngle = std::atan2(dy, dx) * 180.0f / 3.14159265f; // Zapisujemy go do zmiennej!
 
-    sprite.setRotation(angle);
+    // Obracamy grafikę farmera lewo/prawo (zmienione odbicie lustrzane!)
+    if (mousePos.x < position.x) {
+        sprite.setScale(scaleX, scaleY);   // Kursor po lewej -> zwykła skala (bo farmer domyślnie patrzy w lewo)
+    }
+    else {
+        sprite.setScale(-scaleX, scaleY);  // Kursor po prawej -> odbicie lustrzane
+    }
+
+    // Zatrzymujemy grafikę prosto, żeby farmer nie wisiał do góry nogami
+    sprite.setRotation(0.0f);
 }
 
 void Player::takeDamage(int amount) {
