@@ -12,7 +12,7 @@
 #include "Bullet.h"
 #include "Alien.h"
 
-// Definicja stanów gry
+// Definicja globalnych stanów gry (Menu, Gra, Koniec Gry)
 enum GameState { MENU, PLAYING, GAMEOVER };
 
 int main() {

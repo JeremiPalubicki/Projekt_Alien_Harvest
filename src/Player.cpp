@@ -3,19 +3,19 @@
 #include <iostream>
 
 Player::Player(float x, float y) : GameObject(x, y), speed(300.0f), health(100), maxHealth(100) {
-    // wywali blad w konsoli jak zapomnimy dorzucic folderu assets
+    // Wczytanie tekstury - błąd wyświetli się w konsoli, gdy brakuje pliku
     if (!texture.loadFromFile("assets/farmer.png")) {
         std::cerr << "Blad krytyczny: nie znaleziono pliku assets/farmer.png!" << std::endl;
     }
     sprite.setTexture(texture);
 
-    // pobieramy oryginalne wymiary, bo grafika pobrana z neta jest za wielka
+    // Pobranie oryginalnych wymiarów tekstury dla poprawnego skalowania i centrowania
     sf::FloatRect bounds = sprite.getLocalBounds();
 
-    // ustawiamy srodek obrotu na srodek brzucha (zeby nie krecil sie wokol lewego rogu)
+    // Ustawienie punktu obrotu (Origin) dokładnie na środek sprite'a
     sprite.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
 
-    // skalujemy chlopka w dol, zeby mial sensowne 60 pikseli na mapie
+    // Skalowanie postaci, aby dopasować ją do rozmiaru świata gry (60 pikseli)
     float targetSize = 60.0f;
     sprite.setScale(targetSize / bounds.width, targetSize / bounds.height);
 
@@ -25,7 +25,7 @@ Player::Player(float x, float y) : GameObject(x, y), speed(300.0f), health(100),
 void Player::update(float deltaTime) {
     if (isDestroyed()) return;
 
-    // standardowe chodzenie na WSADzie
+    // Obsługa ruchu gracza za pomocą klawiszy WASD
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) position.y -= speed * deltaTime;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) position.y += speed * deltaTime;
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) position.x -= speed * deltaTime;
@@ -41,7 +41,7 @@ void Player::draw(sf::RenderWindow& window) {
 }
 
 sf::FloatRect Player::getBounds() const {
-    return sprite.getGlobalBounds(); // potrzebne do sprawdzania kolizji w mainie
+    return sprite.getGlobalBounds(); // Używane do wykrywania kolizji z przeciwnikami
 }
 
 void Player::rotateTowardsMouse(const sf::RenderWindow& window) {
@@ -50,24 +50,26 @@ void Player::rotateTowardsMouse(const sf::RenderWindow& window) {
     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
     sf::FloatRect bounds = sprite.getLocalBounds();
 
+    // Ponowne przeliczenie współczynników skali, aby zapobiec deformacjom przy zmianie zwrotu postaci
     float targetSize = 60.0f;
     float scaleX = targetSize / bounds.width;
     float scaleY = targetSize / bounds.height;
 
-    // --- OBLICZAMY PRAWDZIWY KĄT DO STRZELANIA ---
+    // --- OBLICZANIE KĄTA CELOWANIA DLA POCISKÓW ---
     float dx = mousePos.x - position.x;
     float dy = mousePos.y - position.y;
-    aimAngle = std::atan2(dy, dx) * 180.0f / 3.14159265f; // Zapisujemy go do zmiennej!
+    // std::atan2 zwraca kąt w radianach, zamieniamy go na stopnie do wykorzystania w klasie Bullet
+    aimAngle = std::atan2(dy, dx) * 180.0f / 3.14159265f; 
 
-    // Obracamy grafikę farmera lewo/prawo (zmienione odbicie lustrzane!)
+    // Mechanizm odbicia lustrzanego grafiki (aby postać patrzyła w stronę kursora)
     if (mousePos.x < position.x) {
-        sprite.setScale(scaleX, scaleY);   // Kursor po lewej -> zwykła skala (bo farmer domyślnie patrzy w lewo)
+        sprite.setScale(scaleX, scaleY);   // Kursor po lewej: standardowa orientacja (zakładając, że grafika wyjściowa patrzy w lewo)
     }
     else {
-        sprite.setScale(-scaleX, scaleY);  // Kursor po prawej -> odbicie lustrzane
+        sprite.setScale(-scaleX, scaleY);  // Kursor po prawej: odbicie lustrzane osi X
     }
 
-    // Zatrzymujemy grafikę prosto, żeby farmer nie wisiał do góry nogami
+    // Zamrażamy obrót wizualny postaci, aby uniknąć efektu "chodzenia do góry nogami"
     sprite.setRotation(0.0f);
 }
 
@@ -75,7 +77,7 @@ void Player::takeDamage(int amount) {
     health -= amount;
     std::cout << "Otrzymano obrazenia! Aktualne HP: " << health << "/" << maxHealth << std::endl;
 
-    
+    // Sprawdzenie stanu śmierci
     if (health <= 0) {
         destroy();
         std::cout << "Koniec gry! Farmer polegl." << std::endl;

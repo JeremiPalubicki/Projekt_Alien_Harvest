@@ -6,11 +6,11 @@ Alien::Alien(float x, float y, Player* playerTarget, sf::Texture& tex, float mov
 
     sprite.setTexture(tex);
 
-    // to samo co u gracza, ogarniamy srodek do obrotu
+    // Ustawienie środka obrotu i pozycji sprite'a na jego geometryczny środek
     sf::FloatRect bounds = sprite.getLocalBounds();
     sprite.setOrigin(bounds.width / 2.0f, bounds.height / 2.0f);
 
-    // kosmita musi byc minimalnie mniejszy od farmera zeby dalo sie uciekac
+    // Skalowanie kosmity do docelowego rozmiaru (np. 50 pikseli), aby był odpowiednio mniejszy od gracza
     float targetSize = 50.0f;
     sprite.setScale(targetSize / bounds.width, targetSize / bounds.height);
 
@@ -18,22 +18,23 @@ Alien::Alien(float x, float y, Player* playerTarget, sf::Texture& tex, float mov
 }
 
 void Alien::update(float deltaTime) {
-    // jak nie ma celu albo gracz nie zyje, to ufoludki stoja w miejscu
+    // Przerwanie aktualizacji, jeśli brakuje celu, gracz nie żyje lub kosmita został zniszczony
     if (!target || target->isDestroyed() || isDestroyed()) return;
 
-    // wektor kierunkowy na gracza
+    // Obliczanie wektora kierunkowego wskazującego na pozycję gracza
     sf::Vector2f targetPos = target->getPosition();
     float dx = targetPos.x - position.x;
     float dy = targetPos.y - position.y;
 
-    // pitagoras do dystansu
+    // Obliczanie odległości między kosmitą a graczem (twierdzenie Pitagorasa)
     float distance = std::sqrt(dx * dx + dy * dy);
 
     if (distance > 0) {
-        // normalizacja wektora zeby nie zapierdzielal szybciej chodzac na ukos
+        // Normalizacja wektora kierunkowego - zapobiega to szybszemu poruszaniu się po skosie
         float dirX = dx / distance;
         float dirY = dy / distance;
 
+        // Aktualizacja pozycji kosmity na podstawie wektora, prędkości i czasu klatki (deltaTime)
         position.x += dirX * speed * deltaTime;
         position.y += dirY * speed * deltaTime;
     }
@@ -51,7 +52,8 @@ sf::FloatRect Alien::getBounds() const {
 
 void Alien::takeDamage(int amount) {
     hp -= amount;
+    // Jeśli punkty życia spadną do zera lub poniżej, oznacz obiekt jako zniszczony
     if (hp <= 0) {
-        destroy(); // dajemy flage zeby wywalilo go z wektora w main.cpp
+        destroy(); 
     }
 }
