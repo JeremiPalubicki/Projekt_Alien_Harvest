@@ -2,7 +2,7 @@
 #include <cmath>
 
 Alien::Alien(float x, float y, Player* playerTarget, sf::Texture& tex, float moveSpeed, int maxHp)
-    : GameObject(x, y), speed(moveSpeed), target(playerTarget), hp(maxHp) {
+    : GameObject(x, y), speed(moveSpeed), target(playerTarget), hp(maxHp), shootCooldown(1.0f + (std::rand() % 150) / 100.0f) {
 
     sprite.setTexture(tex);
 
@@ -37,6 +37,16 @@ void Alien::update(float deltaTime) {
         // Aktualizacja pozycji kosmity na podstawie wektora, prędkości i czasu klatki (deltaTime)
         position.x += dirX * speed * deltaTime;
         position.y += dirY * speed * deltaTime;
+
+        float targetSize = 50.0f;
+        sf::FloatRect bounds = sprite.getLocalBounds();
+        if (dx < 0) {
+            sprite.setScale(-(targetSize / bounds.width), targetSize / bounds.height);
+        }
+        else {
+            sprite.setScale(targetSize / bounds.width, targetSize / bounds.height);
+        }
+    
     }
 
     sprite.setPosition(position);
@@ -56,4 +66,11 @@ void Alien::takeDamage(int amount) {
     if (hp <= 0) {
         destroy(); 
     }
+}
+bool Alien::canShoot() const {
+    return shootTimer.getElapsedTime().asSeconds() > shootCooldown;
+}
+
+void Alien::resetShootTimer() {
+    shootTimer.restart();
 }

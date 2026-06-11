@@ -83,3 +83,10 @@ void Player::takeDamage(int amount) {
         std::cout << "Koniec gry! Farmer polegl." << std::endl;
     }
 }
+
+void Player::heal(int amount) {
+    health += amount;
+    if (health > maxHealth) {
+        health = maxHealth; // Zabezpieczenie, żeby nie przekroczyć 100 punktów
+    }
+}

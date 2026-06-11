@@ -11,6 +11,7 @@ private:
     int health; // Aktualne punkty życia
     int maxHealth;  // Maksymalna ilość punktów życia
     float aimAngle; // Kąt, pod którym gracz jest obrócony (np. w stronę kursora)
+    int hp;
 public:
     // Konstruktor inicjalizujący gracza na podanych współrzędnych
     Player(float x, float y);
@@ -29,7 +30,7 @@ public:
     // Gettery do pobierania stanu zdrowia i rotacji
     int getHealth() const { return health; }
     int getMaxHealth() const { return maxHealth; }
-
+    void heal(int amount);
  
     float getRotation() const { return aimAngle; }
 };

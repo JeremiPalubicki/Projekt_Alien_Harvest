@@ -20,7 +20,7 @@ add_executable(${PROJECT_NAME}
     "src/Runner.cpp" 
     "include/Boss.h" 
     "src/Boss.cpp"
-)
+ "include/AlienBullet.h" "src/AlienBullet.cpp" "include/Medkit.h" "src/Medkit.cpp")
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_link_libraries(${PROJECT_NAME} sfml-graphics sfml-window sfml-system)
