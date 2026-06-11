@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 project(AlienHarvest)
 
 set(CMAKE_CXX_STANDARD 17)
-set(SFML_DIR "C:/SFML-2.6.2/lib/cmake/SFML")
-# szukamy sfml w wersji 2.x
+# Prowadzacy: Tutaj prosimy podac wlasna sciezke do zainstalowanej biblioteki SFML
+# set(SFML_DIR "C:/SFML-2.6.2/lib/cmake/SFML")# szukamy sfml w wersji 2.x
 find_package(SFML 2 COMPONENTS graphics window system REQUIRED)
 
 # tu recznie dopisujemy kazdy plik (jak dojdzie cos nowego, trzeba tu dodac!)
