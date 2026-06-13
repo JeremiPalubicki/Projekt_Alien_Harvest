@@ -15,22 +15,19 @@
 #include "Alien.h"
 #include "AlienBullet.h" 
 #include "Medkit.h"      
-#include "Obstacle.h" // NOWOŚĆ MILESTONE 8: Klasa przeszkód
+#include "Obstacle.h" 
 
-// Definicja globalnych stanów gry - pozwala na łatwe przełączanie między menu, grą a ekranem porażki
+// Definicja globalnych stanów gry
 enum GameState { MENU, PLAYING, GAMEOVER };
 
 int main() {
     // Utworzenie głównego okna gry o wymiarach 800x600 pikseli
-    // Zablokowane powiększanie okna
     sf::RenderWindow window(sf::VideoMode(800, 600), "Alien Harvest", sf::Style::Titlebar | sf::Style::Close);
-    // Zegar do mierzenia czasu między klatkami (tzw. deltaTime)
     sf::Clock clock;
 
-    // Inicjalizacja generatora liczb losowych na podstawie aktualnego czasu
+    // Inicjalizacja generatora liczb losowych
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    // Gra uruchamia się w stanie MENU
     GameState currentState = MENU;
 
     // ==========================================
@@ -41,8 +38,8 @@ int main() {
         std::cerr << "Blad ladowania mapy!" << std::endl;
     }
     sf::Sprite background(mapTexture);
-    background.setScale(3.0f, 3.0f); // Skalujemy lekko mape, poniewaz teraz mamy kamere, wiec obszar jest wiekszy
-    background.setPosition(-800, -600); // Przesuwamy srodek mapy
+    background.setScale(3.0f, 3.0f);
+    background.setPosition(-800, -600);
 
     sf::Texture alienTexture;
     if (!alienTexture.loadFromFile("assets/alien.png")) {
@@ -52,21 +49,17 @@ int main() {
     if (!medkitTexture.loadFromFile("assets/medkit.png")) {
         std::cerr << "Blad ladowania apteczki!" << std::endl;
     }
-
-    // --- NOWE ZMIENNE DO MILESTONE 8 ---
     sf::Texture treeTex;
     if (!treeTex.loadFromFile("assets/tree.png")) {
-        std::cerr << "Blad ladowania drzewa! Utworz plik assets/tree.png" << std::endl;
+        std::cerr << "Blad ladowania drzewa!" << std::endl;
     }
 
-    std::vector<Obstacle> obstacles;
-    // Generujemy kilka drzew na mapie (rozrzucone szeroko)
-    obstacles.push_back(Obstacle(200, 300, treeTex));
-    obstacles.push_back(Obstacle(-400, 800, treeTex));
-    obstacles.push_back(Obstacle(1200, -200, treeTex));
-    obstacles.push_back(Obstacle(800, 1000, treeTex));
+    sf::Font font;
+    if (!font.loadFromFile("assets/font.ttf")) {
+        std::cerr << "Blad: Nie znaleziono pliku assets/font.ttf!" << std::endl;
+    }
 
-    // KAMERA (Wielkosc naszego okna)
+    // KAMERA
     sf::View camera(sf::FloatRect(0, 0, 800, 600));
 
     // ZASADY GRY I STOPER
@@ -75,23 +68,15 @@ int main() {
     bool isBossSpawned = false;
     float finalTime = 0.0f;
 
-    sf::Font font;
-    if (!font.loadFromFile("assets/font.ttf")) {
-        std::cerr << "Blad: Nie znaleziono pliku assets/font.ttf!" << std::endl;
-    }
-
     // ==========================================
     // --- KONFIGURACJA TEKSTÓW (Interfejs / HUD) ---
     // ==========================================
-
-    // Tekst wyświetlający statystyki gracza (lewy górny róg)
     sf::Text hudText;
     hudText.setFont(font);
     hudText.setCharacterSize(16);
     hudText.setFillColor(sf::Color::White);
     hudText.setPosition(10.0f, 10.0f);
 
-    // Tekst używany na ekranach MENU, GAMEOVER i WYGRANEJ
     sf::Text centerText;
     centerText.setFont(font);
     centerText.setCharacterSize(20);
@@ -100,27 +85,40 @@ int main() {
     // ==========================================
     // --- ZMIENNE GLOBALNE GRY ---
     // ==========================================
-    int killCount = 0;              // Liczba pokonanych wrogów
-    int currentLevel = 1;           // Aktualny poziom trudności
-    sf::Clock alienSpawnClock;      // Zegar odmierzający czas do pojawienia się nowego wroga
-    float spawnCooldown = 1.5f;     // Czas (w sekundach) między spawnami wrogów
-    float currentAlienSpeed = 100.0f; // Początkowa prędkość wrogów
-    int currentAlienHp = 2;         // Początkowe punkty życia wrogów
+    int killCount = 0;
+    int currentLevel = 1;
+    sf::Clock alienSpawnClock;
+    float spawnCooldown = 1.5f;
+    float currentAlienSpeed = 100.0f;
+    int currentAlienHp = 2;
 
-    // Główny kontener przechowujący WSZYSTKIE obiekty w grze (Polimorfizm)
     std::vector<std::unique_ptr<GameObject>> entities;
-    Player* player = nullptr; // Wskaźnik na gracza dla szybkiego dostępu
+    std::vector<Obstacle> obstacles;
+    Player* player = nullptr;
 
-    // Funkcja (Lambda) resetująca wszystkie zmienne i czyszcząca mapę do stanu początkowego
+    // Funkcja resetująca grę do stanu początkowego
     auto resetGame = [&]() {
-        entities.clear(); // Usunięcie starych obiektów
+        entities.clear();
+        obstacles.clear(); // Wyczyść stare drzewa przed nową grą
 
-        // Tworzymy nowego gracza na środku ekranu i dodajemy go do wektora
         auto playerPtr = std::make_unique<Player>(400.0f, 300.0f);
         player = playerPtr.get();
         entities.push_back(std::move(playerPtr));
 
-        // Reset statystyk
+        // --- GENERATOR LASU (Milestone 8) ---
+        for (int i = 0; i < 100; ++i) {
+            float randX = -700.0f + (std::rand() % 2200);
+            float randY = -500.0f + (std::rand() % 1600);
+
+            float distToPlayerX = std::abs(randX - 400.0f);
+            float distToPlayerY = std::abs(randY - 300.0f);
+
+            // Bezpieczna polana startowa
+            if (distToPlayerX > 150.0f || distToPlayerY > 150.0f) {
+                obstacles.push_back(Obstacle(randX, randY, treeTex));
+            }
+        }
+
         killCount = 0;
         currentLevel = 1;
         spawnCooldown = 1.5f;
@@ -128,7 +126,6 @@ int main() {
         currentAlienHp = 2;
         mapTexture.loadFromFile("assets/map1.png");
 
-        // Reset Milestone 8
         isGameWon = false;
         isBossSpawned = false;
         finalTime = 0.0f;
@@ -136,42 +133,35 @@ int main() {
         camera.setCenter(400.0f, 300.0f);
         };
 
-    resetGame(); // Inicjalizacja gry przy pierwszym uruchomieniu programu
+    resetGame();
 
     // ==========================================
     // --- GŁÓWNA PĘTLA GRY ---
     // ==========================================
     while (window.isOpen()) {
-        // Zmierz czas trwania ostatniej klatki w sekundach (niezbędne do płynnego ruchu niezależnie od FPS)
         float deltaTime = clock.restart().asSeconds();
         sf::Event event;
 
-        // --- OBSŁUGA ZDARZEŃ (Klawiatura / Mysz / Okno) ---
         while (window.pollEvent(event)) {
-            // Zamknięcie okna krzyżykiem lub klawiszem ESC
             if (event.type == sf::Event::Closed) window.close();
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) window.close();
 
             if (currentState == MENU) {
-                // Przejście z Menu do Gry po wciśnięciu Enter
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
-                    resetGame(); // Wymusza zresetowanie stopera
+                    resetGame();
                     currentState = PLAYING;
                 }
             }
             else if (currentState == PLAYING) {
                 if (isGameWon) {
-                    // Reset gry po WYGRANEJ za pomocą klawisza Enter
                     if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
                         resetGame();
                         currentState = PLAYING;
                     }
                 }
                 else {
-                    // Strzał gracza lewym przyciskiem myszy
                     if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                         if (!player->isDestroyed()) {
-                            // Tworzy nowy pocisk i ustawia go w miejscu i rotacji gracza
                             entities.push_back(std::make_unique<Bullet>(
                                 player->getPosition().x, player->getPosition().y, player->getRotation()
                             ));
@@ -180,7 +170,6 @@ int main() {
                 }
             }
             else if (currentState == GAMEOVER) {
-                // Restart gry po przegranej za pomocą klawisza Enter
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
                     resetGame();
                     currentState = PLAYING;
@@ -193,18 +182,16 @@ int main() {
         // ==========================================
         if (currentState == PLAYING && !isGameWon) {
 
-            // Obracanie gracza w stronę kursora myszy
             if (!player->isDestroyed()) {
                 player->rotateTowardsMouse(window);
             }
 
-            // MILESTONE 8: Zapisujemy pozycję gracza PRZED aktualizacją ruchu (potrzebne do blokowania o drzewa)
+            // MILESTONE 8: Zapis pozycji do blokowania na drzewach
             sf::Vector2f oldPlayerPos = player->getPosition();
 
-            // BUFOR BEZPIECZEŃSTWA: Przechowuje obiekty stworzone W TRAKCIE pętli
             std::vector<std::unique_ptr<GameObject>> newEntities;
 
-            // Aktualizacja wszystkich obiektów na mapie
+            // Aktualizacja obiektów i strzelanie kosmitów
             for (size_t i = 0; i < entities.size(); ++i) {
                 entities[i]->update(deltaTime);
 
@@ -227,46 +214,39 @@ int main() {
             // MILESTONE 8: FIZYKA KOLIZJI Z DRZEWAMI
             if (!player->isDestroyed()) {
                 for (const auto& obs : obstacles) {
-                    // Sprawdzamy czy zaktualizowany hitbox nachodzi na drzewo
                     if (player->getBounds().intersects(obs.getGlobalBounds())) {
-                        // Jesli wpadl w drzewo, cofnij go do starej pozycji!
                         player->setPosition(oldPlayerPos.x, oldPlayerPos.y);
                         break;
                     }
                 }
             }
 
-            // --- NOWY SPAWNER WROGÓW I BOSSA (Milestone 8) ---
+            // --- NOWY SPAWNER WROGÓW I BOSSA ---
             if (!isBossSpawned) {
                 if (alienSpawnClock.getElapsedTime().asSeconds() > spawnCooldown) {
                     if (!player->isDestroyed()) {
 
-                        // Co 15 zabojstw podnosimy trudnosc (zaktualizowany level system)
                         currentLevel = 1 + (killCount / 15);
 
                         if (killCount >= 50) {
                             // WYCZYŚĆ MAPĘ ZE ZWYKŁYCH KOSMITÓW I SPAWNUJ BOSSA
-                            // Zostawiamy gracza, medkity i pociski, ale niszczymy kosmitów
                             entities.erase(std::remove_if(entities.begin(), entities.end(),
                                 [](const std::unique_ptr<GameObject>& obj) {
                                     return dynamic_cast<Alien*>(obj.get()) != nullptr;
                                 }), entities.end());
 
-                            // Tworzymy Bossa zaraz za ekranem kamery (np. po prawej stronie od gracza)
                             entities.push_back(std::make_unique<Boss>(
                                 player->getPosition().x + 500.0f, player->getPosition().y, player, alienTexture, &entities
                             ));
                             isBossSpawned = true;
                         }
                         else {
-                            // STARY SYSTEM SPAWNOWANIA (Fale przed osiągnięciem 50 zabić)
                             int aliensToSpawn = 1 + (currentLevel / 3);
 
                             for (int k = 0; k < aliensToSpawn; ++k) {
                                 float spawnX = 0.0f;
                                 float spawnY = 0.0f;
 
-                                // Respią się wokół gracza (żeby uwzględnić przesuniętą kamerę!)
                                 sf::Vector2f center = player->getPosition();
                                 int edge = std::rand() % 4;
 
@@ -329,7 +309,6 @@ int main() {
                                         ));
                                     }
 
-                                    // LEVELOWANIE JEST TERAZ W ZALEZNOSCI OD SPEDRUNA W SPAWNERZE, wiec zwiekszamy tylko statystyki
                                     if (killCount % 15 == 0 && killCount <= 50) {
                                         std::string mapPath = "assets/map" + std::to_string(currentLevel > 5 ? 5 : currentLevel) + ".png";
                                         mapTexture.loadFromFile(mapPath);
@@ -382,7 +361,7 @@ int main() {
             entities.erase(std::remove_if(entities.begin(), entities.end(),
                 [](const std::unique_ptr<GameObject>& obj) { return obj->isDestroyed(); }), entities.end());
 
-            // MILESTONE 8: Sprawdzenie, czy Boss został pokonany (warunek wygranej)
+            // Warunek wygranej
             if (isBossSpawned && !isGameWon) {
                 bool bossAlive = false;
                 for (const auto& ent : entities) {
@@ -391,13 +370,12 @@ int main() {
                         break;
                     }
                 }
-                if (!bossAlive) { // Jeśli bossa już nie ma w wektorze żywych:
+                if (!bossAlive) {
                     isGameWon = true;
                     finalTime = gameTimer.getElapsedTime().asSeconds();
                 }
             }
 
-            // Aktualizacja interfejsu (Timer i Licznik dodane!)
             hudText.setString("HP: " + std::to_string(player->getHealth()) +
                 " | Czas: " + std::to_string((int)gameTimer.getElapsedTime().asSeconds()) + "s" +
                 " | Zabici: " + std::to_string(killCount) + "/50");
@@ -414,24 +392,23 @@ int main() {
 
         if (currentState == PLAYING) {
 
-            // --- 1. RYSOWANIE ŚWIATA (Przesuwanie z graczem) ---
+            // --- 1. RYSOWANIE ŚWIATA ---
             if (!player->isDestroyed()) {
-                camera.setCenter(player->getPosition()); // Kamera zawsze na farmerze
+                camera.setCenter(player->getPosition());
             }
             window.setView(camera);
 
             window.draw(background);
 
             for (const auto& obs : obstacles) {
-                obs.draw(window); // Rysowanie przeszkód
+                obs.draw(window);
             }
 
             for (auto& entity : entities) {
                 entity->draw(window);
             }
 
-            // --- 2. RYSOWANIE INTERFEJSU (UI) ---
-            // Resetujemy kamerę na standardową, żeby tekst był "przyklejony" do ekranu
+            // --- 2. RYSOWANIE INTERFEJSU ---
             window.setView(window.getDefaultView());
 
             if (isGameWon) {
@@ -442,12 +419,11 @@ int main() {
                 window.draw(centerText);
             }
             else {
-                window.draw(hudText); // Jeśli gra trwa, po prostu narysuj HUD
+                window.draw(hudText);
             }
-
         }
         else if (currentState == MENU) {
-            window.setView(window.getDefaultView()); // Menu ma bazową kamerę
+            window.setView(window.getDefaultView());
             centerText.setString("ALIEN HARVEST: SPEEDRUN MODE\n\nWcisnij ENTER aby rozpoczac");
             sf::FloatRect textRect = centerText.getLocalBounds();
             centerText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
@@ -455,7 +431,7 @@ int main() {
             window.draw(centerText);
         }
         else if (currentState == GAMEOVER) {
-            window.setView(window.getDefaultView()); // Gameover ma bazową kamerę
+            window.setView(window.getDefaultView());
             centerText.setString("GAME OVER!\nZlikwidowani kosmici: " + std::to_string(killCount) + "\n\nWcisnij ENTER aby zagrac ponownie");
             sf::FloatRect textRect = centerText.getLocalBounds();
             centerText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
@@ -463,7 +439,7 @@ int main() {
             window.draw(centerText);
         }
 
-        window.display(); // Wyświetlenie gotowej klatki na monitorze
+        window.display();
     }
-    return 0; // Prawidłowe zakończenie programu
+    return 0;
 }
