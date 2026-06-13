@@ -27,6 +27,8 @@ add_executable(${PROJECT_NAME}
     "src/AlienBullet.cpp" 
     "include/Medkit.h" 
     "src/Medkit.cpp"
+    "src/Obstacle.cpp"
+    "include/Obstacle.h"
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

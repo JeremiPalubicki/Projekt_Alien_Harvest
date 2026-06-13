@@ -13,15 +13,16 @@
 #include "Player.h"
 #include "Bullet.h"
 #include "Alien.h"
-#include "AlienBullet.h" // Klasa pocisku wroga (Milestone 7)
-#include "Medkit.h"      // Klasa apteczki (Milestone 7)
+#include "AlienBullet.h" 
+#include "Medkit.h"      
+#include "Obstacle.h" // NOWOŚĆ MILESTONE 8: Klasa przeszkód
 
 // Definicja globalnych stanów gry - pozwala na łatwe przełączanie między menu, grą a ekranem porażki
 enum GameState { MENU, PLAYING, GAMEOVER };
 
 int main() {
     // Utworzenie głównego okna gry o wymiarach 800x600 pikseli
-// Zablokowane powiększanie okna
+    // Zablokowane powiększanie okna
     sf::RenderWindow window(sf::VideoMode(800, 600), "Alien Harvest", sf::Style::Titlebar | sf::Style::Close);
     // Zegar do mierzenia czasu między klatkami (tzw. deltaTime)
     sf::Clock clock;
@@ -40,6 +41,8 @@ int main() {
         std::cerr << "Blad ladowania mapy!" << std::endl;
     }
     sf::Sprite background(mapTexture);
+    background.setScale(3.0f, 3.0f); // Skalujemy lekko mape, poniewaz teraz mamy kamere, wiec obszar jest wiekszy
+    background.setPosition(-800, -600); // Przesuwamy srodek mapy
 
     sf::Texture alienTexture;
     if (!alienTexture.loadFromFile("assets/alien.png")) {
@@ -49,6 +52,28 @@ int main() {
     if (!medkitTexture.loadFromFile("assets/medkit.png")) {
         std::cerr << "Blad ladowania apteczki!" << std::endl;
     }
+
+    // --- NOWE ZMIENNE DO MILESTONE 8 ---
+    sf::Texture treeTex;
+    if (!treeTex.loadFromFile("assets/tree.png")) {
+        std::cerr << "Blad ladowania drzewa! Utworz plik assets/tree.png" << std::endl;
+    }
+
+    std::vector<Obstacle> obstacles;
+    // Generujemy kilka drzew na mapie (rozrzucone szeroko)
+    obstacles.push_back(Obstacle(200, 300, treeTex));
+    obstacles.push_back(Obstacle(-400, 800, treeTex));
+    obstacles.push_back(Obstacle(1200, -200, treeTex));
+    obstacles.push_back(Obstacle(800, 1000, treeTex));
+
+    // KAMERA (Wielkosc naszego okna)
+    sf::View camera(sf::FloatRect(0, 0, 800, 600));
+
+    // ZASADY GRY I STOPER
+    sf::Clock gameTimer;
+    bool isGameWon = false;
+    bool isBossSpawned = false;
+    float finalTime = 0.0f;
 
     sf::Font font;
     if (!font.loadFromFile("assets/font.ttf")) {
@@ -66,7 +91,7 @@ int main() {
     hudText.setFillColor(sf::Color::White);
     hudText.setPosition(10.0f, 10.0f);
 
-    // Tekst używany na ekranach MENU i GAMEOVER (wyśrodkowany)
+    // Tekst używany na ekranach MENU, GAMEOVER i WYGRANEJ
     sf::Text centerText;
     centerText.setFont(font);
     centerText.setCharacterSize(20);
@@ -102,6 +127,13 @@ int main() {
         currentAlienSpeed = 100.0f;
         currentAlienHp = 2;
         mapTexture.loadFromFile("assets/map1.png");
+
+        // Reset Milestone 8
+        isGameWon = false;
+        isBossSpawned = false;
+        finalTime = 0.0f;
+        gameTimer.restart();
+        camera.setCenter(400.0f, 300.0f);
         };
 
     resetGame(); // Inicjalizacja gry przy pierwszym uruchomieniu programu
@@ -123,17 +155,27 @@ int main() {
             if (currentState == MENU) {
                 // Przejście z Menu do Gry po wciśnięciu Enter
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
+                    resetGame(); // Wymusza zresetowanie stopera
                     currentState = PLAYING;
                 }
             }
             else if (currentState == PLAYING) {
-                // Strzał gracza lewym przyciskiem myszy
-                if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                    if (!player->isDestroyed()) {
-                        // Tworzy nowy pocisk i ustawia go w miejscu i rotacji gracza
-                        entities.push_back(std::make_unique<Bullet>(
-                            player->getPosition().x, player->getPosition().y, player->getRotation()
-                        ));
+                if (isGameWon) {
+                    // Reset gry po WYGRANEJ za pomocą klawisza Enter
+                    if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
+                        resetGame();
+                        currentState = PLAYING;
+                    }
+                }
+                else {
+                    // Strzał gracza lewym przyciskiem myszy
+                    if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                        if (!player->isDestroyed()) {
+                            // Tworzy nowy pocisk i ustawia go w miejscu i rotacji gracza
+                            entities.push_back(std::make_unique<Bullet>(
+                                player->getPosition().x, player->getPosition().y, player->getRotation()
+                            ));
+                        }
                     }
                 }
             }
@@ -149,97 +191,119 @@ int main() {
         // ==========================================
         // --- LOGIKA GRY (Wykonywana tylko w stanie PLAYING) ---
         // ==========================================
-        if (currentState == PLAYING) {
+        if (currentState == PLAYING && !isGameWon) {
 
             // Obracanie gracza w stronę kursora myszy
             if (!player->isDestroyed()) {
                 player->rotateTowardsMouse(window);
             }
 
-            // BUFOR BEZPIECZEŃSTWA: Przechowuje obiekty stworzone W TRAKCIE pętli (np. nowe strzały wroga).
-            // Zapobiega to tzw. "iterator invalidation" (crashe programu przy dodawaniu elementów do aktualnie czytanego wektora)
+            // MILESTONE 8: Zapisujemy pozycję gracza PRZED aktualizacją ruchu (potrzebne do blokowania o drzewa)
+            sf::Vector2f oldPlayerPos = player->getPosition();
+
+            // BUFOR BEZPIECZEŃSTWA: Przechowuje obiekty stworzone W TRAKCIE pętli
             std::vector<std::unique_ptr<GameObject>> newEntities;
 
-            // Aktualizacja wszystkich obiektów na mapie (ruch kosmitów, lot pocisków itp.)
+            // Aktualizacja wszystkich obiektów na mapie
             for (size_t i = 0; i < entities.size(); ++i) {
                 entities[i]->update(deltaTime);
 
-                // NOWOŚĆ: Strzelanie kosmitów
-               // NOWOŚĆ: Strzelanie kosmitów (Podwójny strzał - nożyce)
                 if (auto* alien = dynamic_cast<Alien*>(entities[i].get())) {
                     if (alien->canShoot() && currentLevel >= 1) {
-                        // Pobieramy aktualną pozycję gracza
                         sf::Vector2f pPos = player->getPosition();
 
-                        // Pocisk 1: Celuje lekko nad głowę gracza (Y - 60)
                         newEntities.push_back(std::make_unique<AlienBullet>(
                             alien->getPosition().x, alien->getPosition().y, sf::Vector2f(pPos.x, pPos.y - 60.0f)
                         ));
-
-                        // Pocisk 2: Celuje lekko pod nogi gracza (Y + 60)
                         newEntities.push_back(std::make_unique<AlienBullet>(
                             alien->getPosition().x, alien->getPosition().y, sf::Vector2f(pPos.x, pPos.y + 60.0f)
                         ));
 
-                        alien->resetShootTimer(); // Resetujemy stoper
+                        alien->resetShootTimer();
                     }
                 }
             }
 
-            // --- SPAWNER WROGÓW ---
-            if (alienSpawnClock.getElapsedTime().asSeconds() > spawnCooldown) {
-
-                if (!player->isDestroyed()) {
-
-                    // NOWOŚĆ 1: Więcej wrogów! Obliczamy, ilu kosmitów zrespić w tym samym momencie
-                    // Poziom 1 i 2: 1 kosmita. Poziom 3 i 4: 2 kosmitów na raz. Poziom 5: 3 naraz!
-                    int aliensToSpawn = 1 + (currentLevel / 3);
-
-                    for (int k = 0; k < aliensToSpawn; ++k) {
-                        float spawnX = 0.0f;
-                        float spawnY = 0.0f;
-
-                        // NOWOŚĆ 2: Losujemy krawędź ekranu (0 - Góra, 1 - Prawo, 2 - Dół, 3 - Lewo)
-                        int edge = std::rand() % 4;
-
-                        if (edge == 0) { // GÓRA (Wychodzą zza górnej krawędzi)
-                            spawnX = static_cast<float>(std::rand() % 800);
-                            spawnY = -50.0f;
-                        }
-                        else if (edge == 1) { // PRAWO (Wychodzą zza prawej krawędzi)
-                            spawnX = 850.0f;
-                            spawnY = static_cast<float>(std::rand() % 600);
-                        }
-                        else if (edge == 2) { // DÓŁ (Wychodzą zza dolnej krawędzi)
-                            spawnX = static_cast<float>(std::rand() % 800);
-                            spawnY = 650.0f;
-                        }
-                        else { // LEWO (Wychodzą zza lewej krawędzi)
-                            spawnX = -50.0f;
-                            spawnY = static_cast<float>(std::rand() % 600);
-                        }
-
-                        int chance = std::rand() % 100;
-
-                        // Dodajemy wroga z wylosowanymi koordynatami (spawnX, spawnY) zamiast sztywnego 800.0f
-                        if (currentLevel >= 5 && chance < 10) {
-                            entities.push_back(std::make_unique<Boss>(
-                                spawnX, spawnY, player, alienTexture, &entities
-                            ));
-                        }
-                        else if (currentLevel >= 2 && chance < 35) {
-                            entities.push_back(std::make_unique<Runner>(
-                                spawnX, spawnY, player, alienTexture
-                            ));
-                        }
-                        else {
-                            entities.push_back(std::make_unique<Alien>(
-                                spawnX, spawnY, player, alienTexture, currentAlienSpeed, currentAlienHp
-                            ));
-                        }
+            // MILESTONE 8: FIZYKA KOLIZJI Z DRZEWAMI
+            if (!player->isDestroyed()) {
+                for (const auto& obs : obstacles) {
+                    // Sprawdzamy czy zaktualizowany hitbox nachodzi na drzewo
+                    if (player->getBounds().intersects(obs.getGlobalBounds())) {
+                        // Jesli wpadl w drzewo, cofnij go do starej pozycji!
+                        player->setPosition(oldPlayerPos.x, oldPlayerPos.y);
+                        break;
                     }
                 }
-                alienSpawnClock.restart(); // Reset zegara spawnera
+            }
+
+            // --- NOWY SPAWNER WROGÓW I BOSSA (Milestone 8) ---
+            if (!isBossSpawned) {
+                if (alienSpawnClock.getElapsedTime().asSeconds() > spawnCooldown) {
+                    if (!player->isDestroyed()) {
+
+                        // Co 15 zabojstw podnosimy trudnosc (zaktualizowany level system)
+                        currentLevel = 1 + (killCount / 15);
+
+                        if (killCount >= 50) {
+                            // WYCZYŚĆ MAPĘ ZE ZWYKŁYCH KOSMITÓW I SPAWNUJ BOSSA
+                            // Zostawiamy gracza, medkity i pociski, ale niszczymy kosmitów
+                            entities.erase(std::remove_if(entities.begin(), entities.end(),
+                                [](const std::unique_ptr<GameObject>& obj) {
+                                    return dynamic_cast<Alien*>(obj.get()) != nullptr;
+                                }), entities.end());
+
+                            // Tworzymy Bossa zaraz za ekranem kamery (np. po prawej stronie od gracza)
+                            entities.push_back(std::make_unique<Boss>(
+                                player->getPosition().x + 500.0f, player->getPosition().y, player, alienTexture, &entities
+                            ));
+                            isBossSpawned = true;
+                        }
+                        else {
+                            // STARY SYSTEM SPAWNOWANIA (Fale przed osiągnięciem 50 zabić)
+                            int aliensToSpawn = 1 + (currentLevel / 3);
+
+                            for (int k = 0; k < aliensToSpawn; ++k) {
+                                float spawnX = 0.0f;
+                                float spawnY = 0.0f;
+
+                                // Respią się wokół gracza (żeby uwzględnić przesuniętą kamerę!)
+                                sf::Vector2f center = player->getPosition();
+                                int edge = std::rand() % 4;
+
+                                if (edge == 0) { // GÓRA 
+                                    spawnX = center.x - 400.0f + (std::rand() % 800);
+                                    spawnY = center.y - 350.0f;
+                                }
+                                else if (edge == 1) { // PRAWO
+                                    spawnX = center.x + 450.0f;
+                                    spawnY = center.y - 300.0f + (std::rand() % 600);
+                                }
+                                else if (edge == 2) { // DÓŁ 
+                                    spawnX = center.x - 400.0f + (std::rand() % 800);
+                                    spawnY = center.y + 350.0f;
+                                }
+                                else { // LEWO
+                                    spawnX = center.x - 450.0f;
+                                    spawnY = center.y - 300.0f + (std::rand() % 600);
+                                }
+
+                                int chance = std::rand() % 100;
+
+                                if (currentLevel >= 2 && chance < 35) {
+                                    entities.push_back(std::make_unique<Runner>(
+                                        spawnX, spawnY, player, alienTexture
+                                    ));
+                                }
+                                else {
+                                    entities.push_back(std::make_unique<Alien>(
+                                        spawnX, spawnY, player, alienTexture, currentAlienSpeed, currentAlienHp
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                    alienSpawnClock.restart();
+                }
             }
 
             // --- SYSTEM KOLIZJI I ZDERZEŃ ---
@@ -247,133 +311,155 @@ int main() {
 
                 // 1. Zderzenie: Kula Gracza -> Kosmita
                 if (auto* bullet = dynamic_cast<Bullet*>(entities[i].get())) {
-                    if (bullet->isDestroyed()) continue; // Ignoruj zniszczone pociski
+                    if (bullet->isDestroyed()) continue;
                     for (size_t j = 0; j < entities.size(); ++j) {
                         if (auto* alien = dynamic_cast<Alien*>(entities[j].get())) {
                             if (alien->isDestroyed()) continue;
 
-                            // Sprawdzenie nachodzenia na siebie tekstur (zderzenie)
                             if (bullet->getBounds().intersects(alien->getBounds())) {
-                                bullet->destroy(); // Zniszcz pocisk
-                                alien->takeDamage(1); // Zabierz kosmicie 1 HP
+                                bullet->destroy();
+                                alien->takeDamage(1);
 
-                                // Jeśli kosmita zginie w wyniku strzału
                                 if (alien->isDestroyed()) {
-                                    killCount++; // Zwiększ wynik
+                                    killCount++;
 
-                                    // SYSTEM LOOTU: Szansa na drop apteczki (15% szans) po śmierci kosmity
-                                    // SYSTEM LOOTU: Szansa na drop apteczki (15% szans) po śmierci kosmity
                                     if (std::rand() % 100 < 15) {
                                         newEntities.push_back(std::make_unique<Medkit>(
                                             alien->getPosition().x, alien->getPosition().y, medkitTexture
                                         ));
                                     }
 
-                                    // SYSTEM LEVELOWANIA: Co 20 zabójstw awansuj na nowy poziom
-                                   // Awansujemy szybciej - co 15 zabójstw zamiast 20
-                                    int newLevel = 1 + (killCount / 20);
-
-                                    if (newLevel > currentLevel && newLevel <= 5) {
-                                        currentLevel = newLevel;
-                                        std::string mapPath = "assets/map" + std::to_string(currentLevel) + ".png";
+                                    // LEVELOWANIE JEST TERAZ W ZALEZNOSCI OD SPEDRUNA W SPAWNERZE, wiec zwiekszamy tylko statystyki
+                                    if (killCount % 15 == 0 && killCount <= 50) {
+                                        std::string mapPath = "assets/map" + std::to_string(currentLevel > 5 ? 5 : currentLevel) + ".png";
                                         mapTexture.loadFromFile(mapPath);
 
-                                        // BRUTALNY SYSTEM:
-                                        spawnCooldown -= 0.35f; // Kosmici wychodzą szybciej
-                                        currentAlienSpeed += 30.0f; // Biegają szybciej
-                                        currentAlienHp += 1; // Z każdym levelem wrogowie stają się grubszymi tarczami (mają więcej HP!)
+                                        spawnCooldown -= 0.35f;
+                                        currentAlienSpeed += 30.0f;
+                                        currentAlienHp += 1;
 
                                         if (spawnCooldown < 0.1f) spawnCooldown = 0.1f;
                                     }
                                 }
-                                break; // Kula zniknęła, przerwij sprawdzanie dla niej kolejnych kosmitów
+                                break;
                             }
                         }
                     }
                 }
 
-                // 2. Zderzenie: Kosmita -> Gracz (Walka wręcz)
+                // 2. Zderzenie: Kosmita -> Gracz
                 if (auto* alien = dynamic_cast<Alien*>(entities[i].get())) {
                     if (alien->isDestroyed() || player->isDestroyed()) continue;
                     if (alien->getBounds().intersects(player->getBounds())) {
-                        alien->destroy(); // Kosmita ginie przy uderzeniu
-                        player->takeDamage(20); // Gracz traci sporo zdrowia
+                        alien->destroy();
+                        player->takeDamage(20);
                     }
                 }
 
-                // 3. Zderzenie: Kula Wroga -> Gracz (Strzały od wrogów)
+                // 3. Zderzenie: Kula Wroga -> Gracz
                 if (auto* alienBullet = dynamic_cast<AlienBullet*>(entities[i].get())) {
                     if (alienBullet->isDestroyed() || player->isDestroyed()) continue;
                     if (alienBullet->getBounds().intersects(player->getBounds())) {
                         alienBullet->destroy();
-                        player->takeDamage(10); // Obrażenia od lasera wroga
+                        player->takeDamage(10);
                     }
                 }
 
-                // 4. Zderzenie: Apteczka -> Gracz (Leczenie)
+                // 4. Zderzenie: Apteczka -> Gracz
                 if (auto* medkit = dynamic_cast<Medkit*>(entities[i].get())) {
                     if (medkit->isDestroyed() || player->isDestroyed()) continue;
                     if (medkit->getBounds().intersects(player->getBounds())) {
-                        medkit->destroy(); // Apteczka znika
-                        player->heal(30);  // Gracz odzyskuje 30 punktów życia
+                        medkit->destroy();
+                        player->heal(30);
                     }
                 }
             }
 
-            // OPRÓŻNIENIE BUFORA: Teraz, gdy bezpiecznie przejrzeliśmy wektor, wrzucamy do niego nowe obiekty (strzały i dropy)
             for (auto& newEnt : newEntities) {
                 entities.push_back(std::move(newEnt));
             }
 
-            // SYSTEM CZYSZCZENIA PAMIĘCI (Zarządzanie wektorem)
-            // Znajduje i usuwa z wektora wszystkie obiekty, które zostały oznaczone jako "destroyed" (np. uderzyły w coś lub wyleciały za ekran)
             entities.erase(std::remove_if(entities.begin(), entities.end(),
                 [](const std::unique_ptr<GameObject>& obj) { return obj->isDestroyed(); }), entities.end());
 
-            // Aktualizacja interfejsu tekstowego z bieżącymi statystykami
-            hudText.setString("HP: " + std::to_string(player->getHealth()) +
-                " | Poziom: " + std::to_string(currentLevel) +
-                " | Zlikwidowani: " + std::to_string(killCount));
+            // MILESTONE 8: Sprawdzenie, czy Boss został pokonany (warunek wygranej)
+            if (isBossSpawned && !isGameWon) {
+                bool bossAlive = false;
+                for (const auto& ent : entities) {
+                    if (dynamic_cast<Boss*>(ent.get()) != nullptr && !ent->isDestroyed()) {
+                        bossAlive = true;
+                        break;
+                    }
+                }
+                if (!bossAlive) { // Jeśli bossa już nie ma w wektorze żywych:
+                    isGameWon = true;
+                    finalTime = gameTimer.getElapsedTime().asSeconds();
+                }
+            }
 
-            // Sprawdzanie warunku przegranej gry
+            // Aktualizacja interfejsu (Timer i Licznik dodane!)
+            hudText.setString("HP: " + std::to_string(player->getHealth()) +
+                " | Czas: " + std::to_string((int)gameTimer.getElapsedTime().asSeconds()) + "s" +
+                " | Zabici: " + std::to_string(killCount) + "/50");
+
             if (player->getHealth() <= 0) {
                 currentState = GAMEOVER;
             }
         }
 
         // ==========================================
-        // --- RENDEROWANIE (Rysowanie na ekranie) ---
+        // --- RENDEROWANIE (Podwójne okno) ---
         // ==========================================
-        window.clear(sf::Color::Black); // Czyszczenie starej klatki
+        window.clear(sf::Color::Black);
 
         if (currentState == PLAYING) {
-            window.draw(background); // Najpierw rysujemy mapę
 
-            // Następnie rysujemy wszystkie obiekty w grze (Gracz, Wrogowie, Pociski, Apteczki)
+            // --- 1. RYSOWANIE ŚWIATA (Przesuwanie z graczem) ---
+            if (!player->isDestroyed()) {
+                camera.setCenter(player->getPosition()); // Kamera zawsze na farmerze
+            }
+            window.setView(camera);
+
+            window.draw(background);
+
+            for (const auto& obs : obstacles) {
+                obs.draw(window); // Rysowanie przeszkód
+            }
+
             for (auto& entity : entities) {
                 entity->draw(window);
             }
 
-            window.draw(hudText); // Na samej górze rysujemy interfejs użytkownika
+            // --- 2. RYSOWANIE INTERFEJSU (UI) ---
+            // Resetujemy kamerę na standardową, żeby tekst był "przyklejony" do ekranu
+            window.setView(window.getDefaultView());
+
+            if (isGameWon) {
+                centerText.setString("WYGRANA!\nTwoj czas to: " + std::to_string(finalTime) + "s\n\nWcisnij ENTER aby zagrac ponownie");
+                sf::FloatRect textRect = centerText.getLocalBounds();
+                centerText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+                centerText.setPosition(800.0f / 2.0f, 600.0f / 2.0f);
+                window.draw(centerText);
+            }
+            else {
+                window.draw(hudText); // Jeśli gra trwa, po prostu narysuj HUD
+            }
+
         }
         else if (currentState == MENU) {
-            centerText.setString("ALIEN HARVEST\n\nWcisnij ENTER aby rozpoczac");
-
-            // Matematyczne wyśrodkowanie tekstu względem jego rozmiaru i rozmiaru okna (800x600)
+            window.setView(window.getDefaultView()); // Menu ma bazową kamerę
+            centerText.setString("ALIEN HARVEST: SPEEDRUN MODE\n\nWcisnij ENTER aby rozpoczac");
             sf::FloatRect textRect = centerText.getLocalBounds();
             centerText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
             centerText.setPosition(800.0f / 2.0f, 600.0f / 2.0f);
-
             window.draw(centerText);
         }
         else if (currentState == GAMEOVER) {
+            window.setView(window.getDefaultView()); // Gameover ma bazową kamerę
             centerText.setString("GAME OVER!\nZlikwidowani kosmici: " + std::to_string(killCount) + "\n\nWcisnij ENTER aby zagrac ponownie");
-
-            // Matematyczne wyśrodkowanie tekstu
             sf::FloatRect textRect = centerText.getLocalBounds();
             centerText.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
             centerText.setPosition(800.0f / 2.0f, 600.0f / 2.0f);
-
             window.draw(centerText);
         }
 

@@ -3,7 +3,7 @@
 
 /// Główna klasa bazowa (abstrakcyjna) dla wszystkich obiektów w grze.
 class GameObject {
-protected: 
+protected:
     sf::Vector2f position; // Aktualna pozycja obiektu na ekranie (X, Y)
     float rotation;        // Kąt rotacji obiektu (w stopniach)
     bool destroyed;        // Flaga określająca, czy obiekt "nie żyje" i ma zostać usunięty z wektora
@@ -22,5 +22,9 @@ public:
     bool isDestroyed() const { return destroyed; }  // Sprawdza, czy obiekt jest oznaczony do usunięcia
     void destroy() { destroyed = true; }    // Oznacza obiekt jako zniszczony
     sf::Vector2f getPosition() const { return position; }   // Pobiera aktualną pozycję
+
+    // NOWOŚĆ MILESTONE 8: Metoda pozwalająca wymusić zmianę pozycji (np. po zderzeniu z drzewem)
+    void setPosition(float x, float y) { position.x = x; position.y = y; }
+
     float getRotation() const { return rotation; }  // Pobiera aktualny kąt rotacji
 };
